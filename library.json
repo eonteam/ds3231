@@ -1,6 +1,0 @@
-{
-  "platforms": ["*"],
-  "includes": ["inc"],
-  "macros": [],
-  "dependencies": []
-}
