@@ -1,0 +1,18 @@
+---
+# We'll use defaults from the LLVM style
+BasedOnStyle: LLVM
+Language: Cpp
+IncludeBlocks: Merge
+IndentCaseLabels: true
+AllowShortIfStatementsOnASingleLine: true
+AllowShortBlocksOnASingleLine: true
+SpacesBeforeTrailingComments: 1
+# SpacesInParentheses: true
+SpaceBeforeAssignmentOperators: true
+SpaceAfterCStyleCast: true
+ReflowComments: true
+AllowShortCaseLabelsOnASingleLine: true
+AlignEscapedNewlines: Right
+AlignConsecutiveAssignments: true
+AlignConsecutiveMacros: true
+ColumnLimit: 0

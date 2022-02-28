@@ -41,9 +41,13 @@ uint32_t ds3231_nowUnix(ds3231_t *ds);
 
 // Clear status register
 bool ds3231_clearSR(ds3231_t *ds);
+// Writes status register.
+bool ds3231_writeSR(ds3231_t *ds, uint8_t sr);
 // Read status register
 // @return Return -1 if fails
 int16_t ds3231_readSR(ds3231_t *ds);
+// Checks if ds3231 is running or not.
+bool ds3231_isRunning(ds3231_t *ds);
 
 // -- Alarms
 

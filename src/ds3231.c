@@ -1,11 +1,11 @@
 /**
-  ******************************************************************************
-  * @file    ds3231.c 
-  * @author  EonTeam
-	* @version V1.0.1
-  * @date    2020
-  ******************************************************************************
-*/
+ ******************************************************************************
+ * @file    ds3231.c
+ * @author  EonTeam
+ * @version V1.0.1
+ * @date    2020
+ ******************************************************************************
+ */
 
 #include "ds3231.h"
 
@@ -17,12 +17,12 @@
 #define DS3231_ADDR ((uint8_t) 0xD0) // 0x68 << 1
 
 // Registers
-#define REG_TIMING_START ((uint8_t) 0x00)
-#define REG_ALARM1_START ((uint8_t) 0x07)
-#define REG_ALARM2_START ((uint8_t) 0x0B)
-#define REG_CONTROL ((uint8_t) 0x0E)
-#define REG_STATUS ((uint8_t) 0x0F)
-#define REG_AGING_OFFSET ((uint8_t) 0x10)
+#define REG_TIMING_START      ((uint8_t) 0x00)
+#define REG_ALARM1_START      ((uint8_t) 0x07)
+#define REG_ALARM2_START      ((uint8_t) 0x0B)
+#define REG_CONTROL           ((uint8_t) 0x0E)
+#define REG_STATUS            ((uint8_t) 0x0F)
+#define REG_AGING_OFFSET      ((uint8_t) 0x10)
 #define REG_TEMPERATURE_START ((uint8_t) 0x11)
 
 // ===============================================================================
@@ -59,11 +59,11 @@ bool ds3231_now(ds3231_t *ds, xtime_t *xt) {
   ds->_i2cbuf[0] = REG_TIMING_START; // start of timekeeping registers
   if (!i2c_write(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 1, I2C_NOSTOP)) { return false; }
   if (!i2c_read(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 7, I2C_STOP)) { return false; }
-  xt->day = bcd2bin(ds->_i2cbuf[4]);
-  xt->month = bcd2bin(ds->_i2cbuf[5]);
-  xt->year = bcd2bin(ds->_i2cbuf[6]);
+  xt->day     = bcd2bin(ds->_i2cbuf[4]);
+  xt->month   = bcd2bin(ds->_i2cbuf[5]);
+  xt->year    = bcd2bin(ds->_i2cbuf[6]);
   xt->weekday = bcd2bin(ds->_i2cbuf[3]);
-  xt->hours = bcd2bin(ds->_i2cbuf[2]);
+  xt->hours   = bcd2bin(ds->_i2cbuf[2]);
   xt->minutes = bcd2bin(ds->_i2cbuf[1]);
   xt->seconds = bcd2bin(ds->_i2cbuf[0] & 0x7F);
   return true;
@@ -83,9 +83,9 @@ uint32_t ds3231_nowUnix(ds3231_t *ds) {
 // Status Functions
 // ===============================================================================
 
-bool ds3231_clearSR(ds3231_t *ds) {
+bool ds3231_writeSR(ds3231_t *ds, uint8_t sr) {
   ds->_i2cbuf[0] = REG_STATUS;
-  ds->_i2cbuf[1] = 0x00; // clear status register
+  ds->_i2cbuf[1] = sr; // status register bits
   return i2c_write(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 2, I2C_STOP);
 }
 
@@ -96,6 +96,21 @@ int16_t ds3231_readSR(ds3231_t *ds) {
   return (uint8_t) ds->_i2cbuf[0];
 }
 
+bool ds3231_clearSR(ds3231_t *ds) {
+  return ds3231_writeSR(ds, 0x00);
+}
+
+bool ds3231_isRunning(ds3231_t *ds) {
+  int16_t sr = ds3231_readSR(ds);
+  if (sr < 0) return false;
+  sr &= ~(0x80);
+  ds3231_writeSR(ds, sr);
+  delay(100);
+  sr = ds3231_readSR(ds);
+  if (sr < 0) return false;
+  return (sr & 0x80) == 0;
+}
+
 // ===============================================================================
 // Alarm Functions
 // ===============================================================================
@@ -104,9 +119,9 @@ bool ds3231_setAlarm1(ds3231_t *ds, uint32_t u) {
   xtime_t xt;
   xtime_fromUnix(&xt, u);
   // precalculate time in bcd for ds3231 reg using the xtime
-  xt.hours = bin2bcd(xt.hours) & 0x3F;     // A1M3: 0, and hours, 24 hr format
-  xt.minutes = bin2bcd(xt.minutes) & 0x7F; // A1M2: 0, and minutes
-  xt.seconds = bin2bcd(xt.seconds) & 0x7F; // A1M1: 0, and seconds
+  xt.hours       = bin2bcd(xt.hours) & 0x3F;   // A1M3: 0, and hours, 24 hr format
+  xt.minutes     = bin2bcd(xt.minutes) & 0x7F; // A1M2: 0, and minutes
+  xt.seconds     = bin2bcd(xt.seconds) & 0x7F; // A1M1: 0, and seconds
   ds->_i2cbuf[0] = REG_ALARM1_START;
   if (!i2c_write(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 1, I2C_NOSTOP)) { return false; }
   if (!i2c_read(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 9, I2C_STOP)) { return false; }
@@ -140,8 +155,8 @@ bool ds3231_setAlarm2(ds3231_t *ds, uint32_t u) {
   xtime_t xt;
   xtime_fromUnix(&xt, u);
   // precalculate time in bcd for ds3231 reg using the xtime
-  xt.hours = bin2bcd(xt.hours) & 0x3F;     // A2M3: 0, and hours, 24 hr format
-  xt.minutes = bin2bcd(xt.minutes) & 0x7F; // A2M2: 0, and minutes
+  xt.hours       = bin2bcd(xt.hours) & 0x3F;   // A2M3: 0, and hours, 24 hr format
+  xt.minutes     = bin2bcd(xt.minutes) & 0x7F; // A2M2: 0, and minutes
   ds->_i2cbuf[0] = REG_ALARM2_START;
   if (!i2c_write(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 1, I2C_NOSTOP)) { return false; }
   if (!i2c_read(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 5, I2C_STOP)) { return false; }
