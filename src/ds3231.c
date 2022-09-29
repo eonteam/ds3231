@@ -26,6 +26,39 @@
 #define REG_TEMPERATURE_START ((uint8_t) 0x11)
 
 // ===============================================================================
+// INT/SQW Functions
+// ===============================================================================
+
+bool ds3231_enableIntSqwPin(ds3231_t *ds) {
+  if (ds->int_sqw_pin == IGNORE) {
+    return false;
+  }
+  exti_attach(ds->int_sqw_pin, NOPULL, MODE_FALLING);
+  return true;
+}
+
+bool ds3231_disableIntSqwPin(ds3231_t *ds) {
+  exti_detach(ds->int_sqw_pin);
+  return true;
+}
+
+bool ds3231_enable1HzOutput(ds3231_t *ds, bool en) {
+  ds->_i2cbuf[0] = REG_CONTROL;
+  if (!i2c_write(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 1, I2C_NOSTOP)) { return false; }
+  if (!i2c_read(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 1, I2C_STOP)) { return false; }
+  if (en) {
+    bitClear(ds->_i2cbuf[0], 4); // needed for DS3231SN to select 1Hz output
+    bitClear(ds->_i2cbuf[0], 3); // needed for DS3231SN to select 1Hz output
+    bitClear(ds->_i2cbuf[0], 2); // enable 1Hz interrupt
+  } else {
+    bitSet(ds->_i2cbuf[0], 2); // disable 1Hz interrupt
+  }
+  ds->_i2cbuf[1] = ds->_i2cbuf[0];
+  ds->_i2cbuf[0] = REG_CONTROL;
+  return i2c_write(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 2, I2C_STOP);
+}
+
+// ===============================================================================
 // Timing Functions
 // ===============================================================================
 
