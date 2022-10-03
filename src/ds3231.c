@@ -43,19 +43,25 @@ bool ds3231_disableIntSqwPin(ds3231_t *ds) {
 }
 
 bool ds3231_enable1HzOutput(ds3231_t *ds, bool en) {
-  ds->_i2cbuf[0] = REG_CONTROL;
-  if (!i2c_write(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 1, I2C_NOSTOP)) { return false; }
-  if (!i2c_read(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 1, I2C_STOP)) { return false; }
-  if (en) {
-    bitClear(ds->_i2cbuf[0], 4); // needed for DS3231SN to select 1Hz output
-    bitClear(ds->_i2cbuf[0], 3); // needed for DS3231SN to select 1Hz output
-    bitClear(ds->_i2cbuf[0], 2); // enable 1Hz interrupt
-  } else {
-    bitSet(ds->_i2cbuf[0], 2); // disable 1Hz interrupt
-  }
-  ds->_i2cbuf[1] = ds->_i2cbuf[0];
-  ds->_i2cbuf[0] = REG_CONTROL;
-  return i2c_write(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 2, I2C_STOP);
+  int8_t tries = 15;
+  do {
+    if (tries < 15) delay(10);
+    ds->_i2cbuf[0] = REG_CONTROL;
+    if (!i2c_write(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 1, I2C_NOSTOP)) continue;
+    if (!i2c_read(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 1, I2C_STOP)) continue;
+    if (en) {
+      bitClear(ds->_i2cbuf[0], 4); // needed for DS3231SN to select 1Hz output
+      bitClear(ds->_i2cbuf[0], 3); // needed for DS3231SN to select 1Hz output
+      bitClear(ds->_i2cbuf[0], 2); // enable 1Hz interrupt
+    } else {
+      bitSet(ds->_i2cbuf[0], 2); // disable 1Hz interrupt
+    }
+    ds->_i2cbuf[1] = ds->_i2cbuf[0];
+    ds->_i2cbuf[0] = REG_CONTROL;
+    if (!i2c_write(ds->I2Cx, DS3231_ADDR, &(ds->_i2cbuf[0]), 2, I2C_STOP)) continue;
+    return true;
+  } while (tries--);
+  return false;
 }
 
 // ===============================================================================
@@ -103,10 +109,10 @@ bool ds3231_now(ds3231_t *ds, xtime_t *xt) {
 }
 
 uint32_t ds3231_nowUnix(ds3231_t *ds) {
-  // TODO should we do this tries??
   xtime_t xt;
   int8_t tries = 10;
   do {
+    if (tries < 10) delay(10);
     if (ds3231_now(ds, &xt)) { return xtime_toUnix(&xt); }
   } while (tries--);
   return 0;
@@ -134,14 +140,19 @@ bool ds3231_clearSR(ds3231_t *ds) {
 }
 
 bool ds3231_isRunning(ds3231_t *ds) {
-  int16_t sr = ds3231_readSR(ds);
-  if (sr < 0) return false;
-  sr &= ~(0x80);
-  ds3231_writeSR(ds, sr);
-  delay(100);
-  sr = ds3231_readSR(ds);
-  if (sr < 0) return false;
-  return (sr & 0x80) == 0;
+  int8_t tries = 10;
+  do {
+    if (tries < 10) delay(10);
+    int16_t sr = ds3231_readSR(ds);
+    if (sr < 0) continue;
+    sr &= ~(0x80);
+    if (!ds3231_writeSR(ds, sr)) continue;
+    delay(100);
+    sr = ds3231_readSR(ds);
+    if (sr < 0) continue;
+    return (sr & 0x80) == 0;
+  } while (tries--);
+  return false;
 }
 
 // ===============================================================================
